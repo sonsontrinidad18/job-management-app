@@ -23,10 +23,32 @@ export type JobInput = Omit<Job, "id" | "createdAt">;
 export const STORAGE_KEY = "jobflow.jobs.v1";
 export const SEED_KEY = "jobflow.seeded.v1";
 
+/** Local calendar date as YYYY-MM-DD (no UTC shift). */
+export function toDateKey(d: Date) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export function todayKey() {
+  return toDateKey(new Date());
+}
+
 function dayOffset(days: number) {
   const d = new Date();
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return toDateKey(d);
+}
+
+const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Normalize any stored value to YYYY-MM-DD. */
+export function normalizeDateKey(value: string) {
+  if (!value) return "";
+  if (DATE_KEY_RE.test(value)) return value;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "" : toDateKey(d);
 }
 
 export function createSeedJobs(): Job[] {
@@ -96,7 +118,11 @@ export function loadJobs(): Job[] {
   if (typeof window === "undefined") return [];
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored) return JSON.parse(stored) as Job[];
+    if (stored)
+      return (JSON.parse(stored) as Job[]).map((j) => ({
+        ...j,
+        dueDate: normalizeDateKey(j.dueDate),
+      }));
     if (window.localStorage.getItem(SEED_KEY)) return [];
     const seeded = createSeedJobs();
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(seeded));
@@ -118,24 +144,24 @@ export function saveJobs(jobs: Job[]) {
 }
 
 export function formatDate(value: string) {
-  if (!value) return "—";
-  const d = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return value;
+  const key = normalizeDateKey(value);
+  if (!key) return "—";
+  const [y = 0, m = 1, day = 1] = key.split("-").map(Number);
+  const d = new Date(y, m - 1, day);
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 export function isOverdue(job: Job) {
   if (job.status === "Complete" || !job.dueDate) return false;
-  const today = new Date().toISOString().slice(0, 10);
-  return job.dueDate < today;
+  return job.dueDate < todayKey();
 }
 
 export function emptyJob(): JobInput {
   return {
     title: "",
     description: "",
-    assignee: EMPLOYEES[0],
-    dueDate: dayOffset(7),
+    assignee: "",
+    dueDate: "",
     priority: "Medium",
     status: "To Do",
     notes: "",

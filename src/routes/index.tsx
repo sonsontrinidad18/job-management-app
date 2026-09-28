@@ -242,14 +242,23 @@ function Dashboard() {
         onSubmit={(input) => (editing ? updateJob(editing.id, input) : addJob(input))}
       />
 
-      <JobViewDialog job={viewing} open={viewing !== null} onOpenChange={() => setViewing(null)} />
+      <JobViewDialog
+        job={viewing}
+        open={viewing !== null}
+        onOpenChange={() => setViewing(null)}
+        onEdit={(job) => {
+          setViewing(null);
+          setEditing(job);
+          setFormOpen(true);
+        }}
+      />
 
       <AlertDialog open={deleting !== null} onOpenChange={() => setDeleting(null)}>
         <AlertDialogContent className="border-border bg-popover/95 backdrop-blur-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="font-display">Delete this job?</AlertDialogTitle>
             <AlertDialogDescription>
-              “{deleting?.title}” will be removed permanently. This can't be undone.
+              “{deleting?.title}” will be permanently removed. This can't be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

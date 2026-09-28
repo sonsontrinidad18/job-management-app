@@ -6,15 +6,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PriorityBadge, StatusBadge } from "@/components/jobs/badges";
-import { formatDate, type Job } from "@/lib/jobs";
+import { Button } from "@/components/ui/button";
+import { formatDate, normalizeDateKey, type Job } from "@/lib/jobs";
 
 type Props = {
   job: Job | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onEdit: (job: Job) => void;
 };
 
-export function JobViewDialog({ job, open, onOpenChange }: Props) {
+export function JobViewDialog({ job, open, onOpenChange, onEdit }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="border-border bg-popover/95 backdrop-blur-2xl sm:max-w-lg">
@@ -23,7 +25,7 @@ export function JobViewDialog({ job, open, onOpenChange }: Props) {
             <DialogHeader>
               <DialogTitle className="font-display text-xl">{job.title}</DialogTitle>
               <DialogDescription>
-                Created {formatDate(job.createdAt.slice(0, 10))}
+                Created {formatDate(normalizeDateKey(job.createdAt))}
               </DialogDescription>
             </DialogHeader>
 
@@ -52,6 +54,19 @@ export function JobViewDialog({ job, open, onOpenChange }: Props) {
                 <p className="text-xs text-muted-foreground">Notes</p>
                 <p className="mt-1 whitespace-pre-line">{job.notes || "—"}</p>
               </div>
+            </div>
+
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                className="border-border bg-secondary font-display"
+                onClick={() => onOpenChange(false)}
+              >
+                Close
+              </Button>
+              <Button className="font-display" onClick={() => onEdit(job)}>
+                Edit Job
+              </Button>
             </div>
           </>
         ) : null}

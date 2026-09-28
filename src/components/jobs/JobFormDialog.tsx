@@ -29,6 +29,12 @@ import {
   type Status,
 } from "@/lib/jobs";
 
+type Errors = Partial<Record<keyof JobInput, string | undefined>>;
+
+function FieldError({ msg }: { msg?: string | undefined }) {
+  return msg ? <p className="mt-1 text-xs text-destructive">{msg}</p> : null;
+}
+
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -38,11 +44,11 @@ type Props = {
 
 export function JobFormDialog({ open, onOpenChange, job, onSubmit }: Props) {
   const [form, setForm] = useState<JobInput>(emptyJob);
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Errors>({});
 
   useEffect(() => {
     if (!open) return;
-    setError(null);
+    setErrors({});
     setForm(
       job
         ? {
@@ -58,16 +64,21 @@ export function JobFormDialog({ open, onOpenChange, job, onSubmit }: Props) {
     );
   }, [open, job]);
 
-  const set = <K extends keyof JobInput>(key: K, value: JobInput[K]) =>
+  const set = <K extends keyof JobInput>(key: K, value: JobInput[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    setErrors((prev) => ({ ...prev, [key]: undefined }));
+  };
 
   const handleSave = () => {
-    if (!form.title.trim()) {
-      setError("A job title is required.");
-      return;
-    }
-    if (!form.dueDate) {
-      setError("Pick a due date.");
+    const next: Errors = {};
+    if (!form.title.trim()) next.title = "Job title is required.";
+    if (!EMPLOYEES.includes(form.assignee as (typeof EMPLOYEES)[number]))
+      next.assignee = "Choose an assigned employee.";
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(form.dueDate)) next.dueDate = "Due date is required.";
+    if (!PRIORITIES.includes(form.priority)) next.priority = "Choose a priority.";
+    if (!STATUSES.includes(form.status)) next.status = "Choose a status.";
+    if (Object.keys(next).length) {
+      setErrors(next);
       return;
     }
     onSubmit({ ...form, title: form.title.trim() });
@@ -95,7 +106,9 @@ export function JobFormDialog({ open, onOpenChange, job, onSubmit }: Props) {
               onChange={(e) => set("title", e.target.value)}
               placeholder="Replace rooftop HVAC unit"
               className="mt-1 bg-secondary"
+              aria-invalid={!!errors.title}
             />
+            <FieldError msg={errors.title} />
           </div>
 
           <div>
@@ -116,8 +129,8 @@ export function JobFormDialog({ open, onOpenChange, job, onSubmit }: Props) {
             <div>
               <Label className="text-xs text-muted-foreground">Assigned employee</Label>
               <Select value={form.assignee} onValueChange={(v) => set("assignee", v)}>
-                <SelectTrigger className="mt-1 bg-secondary">
-                  <SelectValue />
+                <SelectTrigger className="mt-1 bg-secondary" aria-invalid={!!errors.assignee}>
+                  <SelectValue placeholder="Select employee" />
                 </SelectTrigger>
                 <SelectContent>
                   {EMPLOYEES.map((name) => (
@@ -127,6 +140,7 @@ export function JobFormDialog({ open, onOpenChange, job, onSubmit }: Props) {
                   ))}
                 </SelectContent>
               </Select>
+              <FieldError msg={errors.assignee} />
             </div>
             <div>
               <Label htmlFor="due" className="text-xs text-muted-foreground">
@@ -138,7 +152,9 @@ export function JobFormDialog({ open, onOpenChange, job, onSubmit }: Props) {
                 value={form.dueDate}
                 onChange={(e) => set("dueDate", e.target.value)}
                 className="mt-1 bg-secondary"
+                aria-invalid={!!errors.dueDate}
               />
+              <FieldError msg={errors.dueDate} />
             </div>
           </div>
 
@@ -160,6 +176,7 @@ export function JobFormDialog({ open, onOpenChange, job, onSubmit }: Props) {
                   ))}
                 </SelectContent>
               </Select>
+              <FieldError msg={errors.priority} />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground">Status</Label>
@@ -175,6 +192,7 @@ export function JobFormDialog({ open, onOpenChange, job, onSubmit }: Props) {
                   ))}
                 </SelectContent>
               </Select>
+              <FieldError msg={errors.status} />
             </div>
           </div>
 
@@ -192,7 +210,9 @@ export function JobFormDialog({ open, onOpenChange, job, onSubmit }: Props) {
             />
           </div>
 
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          {Object.values(errors).some(Boolean) ? (
+            <p className="text-sm text-destructive">Please fill in the required fields.</p>
+          ) : null}
         </div>
 
         <DialogFooter className="gap-2 sm:gap-3">
