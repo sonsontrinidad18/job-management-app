@@ -29,9 +29,9 @@ import {
   type Status,
 } from "@/lib/jobs";
 
-type Errors = Partial<Record<keyof JobInput, string>>;
+type Errors = Partial<Record<keyof JobInput, string | undefined>>;
 
-function FieldError({ msg }: { msg?: string }) {
+function FieldError({ msg }: { msg?: string | undefined }) {
   return msg ? <p className="mt-1 text-xs text-destructive">{msg}</p> : null;
 }
 
