@@ -146,7 +146,7 @@ export function saveJobs(jobs: Job[]) {
 export function formatDate(value: string) {
   const key = normalizeDateKey(value);
   if (!key) return "—";
-  const [y, m, day] = key.split("-").map(Number);
+  const [y = 0, m = 1, day = 1] = key.split("-").map(Number);
   const d = new Date(y, m - 1, day);
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }

@@ -16,7 +16,7 @@ type Props = {
   onEdit: (job: Job) => void;
 };
 
-export function JobViewDialog({ job, open, onOpenChange }: Props) {
+export function JobViewDialog({ job, open, onOpenChange, onEdit }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="border-border bg-popover/95 backdrop-blur-2xl sm:max-w-lg">
