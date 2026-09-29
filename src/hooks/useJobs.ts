@@ -1,50 +1,130 @@
 import { useCallback, useEffect, useState } from "react";
-import { loadJobs, saveJobs, type Job, type JobInput } from "@/lib/jobs";
+import {
+  createJob,
+  deleteJob as deleteJobFromDatabase,
+  fetchJobs,
+  getEmployees,
+  updateJob as updateJobInDatabase,
+  type Employee,
+  type Job,
+  type JobInput,
+} from "@/lib/jobs";
 
 export function useJobs() {
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      setError(null);
+
+      const [jobsData, employeesData] = await Promise.all([
+        fetchJobs(),
+        getEmployees(),
+      ]);
+
+      setJobs(jobsData);
+      setEmployees(employeesData);
+    } catch (err) {
+      console.error("Failed to load data:", err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to load data.",
+      );
+    } finally {
+      setReady(true);
+    }
+  }, []);
 
   useEffect(() => {
-    setJobs(loadJobs());
-    setReady(true);
-  }, []);
+    void load();
+  }, [load]);
 
-  const persist = useCallback((next: Job[]) => {
-    setJobs(next);
-    saveJobs(next);
-  }, []);
+  const addJob = useCallback(async (input: JobInput) => {
+    try {
+      setError(null);
 
-  const addJob = useCallback(
-    (input: JobInput) => {
-      persist([
-        {
-          ...input,
-          id:
-            typeof crypto !== "undefined" && crypto.randomUUID
-              ? crypto.randomUUID()
-              : `job-${Date.now()}`,
-          createdAt: new Date().toISOString(),
-        },
-        ...jobs,
-      ]);
-    },
-    [jobs, persist],
-  );
+      const newJob = await createJob(input);
+
+      setJobs((current) => [newJob, ...current]);
+
+      return newJob;
+    } catch (err) {
+      console.error("Failed to create job:", err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to create job.",
+      );
+
+      throw err;
+    }
+  }, []);
 
   const updateJob = useCallback(
-    (id: string, input: JobInput) => {
-      persist(jobs.map((job) => (job.id === id ? { ...job, ...input } : job)));
+    async (id: string, input: JobInput) => {
+      try {
+        setError(null);
+
+        const updatedJob = await updateJobInDatabase(id, input);
+
+        setJobs((current) =>
+          current.map((job) =>
+            job.id === id ? updatedJob : job,
+          ),
+        );
+
+        return updatedJob;
+      } catch (err) {
+        console.error("Failed to update job:", err);
+
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Failed to update job.",
+        );
+
+        throw err;
+      }
     },
-    [jobs, persist],
+    [],
   );
 
-  const deleteJob = useCallback(
-    (id: string) => {
-      persist(jobs.filter((job) => job.id !== id));
-    },
-    [jobs, persist],
-  );
+  const deleteJob = useCallback(async (id: string) => {
+    try {
+      setError(null);
 
-  return { jobs, ready, addJob, updateJob, deleteJob };
+      await deleteJobFromDatabase(id);
+
+      setJobs((current) =>
+        current.filter((job) => job.id !== id),
+      );
+    } catch (err) {
+      console.error("Failed to delete job:", err);
+
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to delete job.",
+      );
+
+      throw err;
+    }
+  }, []);
+
+  return {
+    jobs,
+    employees,
+    ready,
+    error,
+    addJob,
+    updateJob,
+    deleteJob,
+    reload: load,
+  };
 }
